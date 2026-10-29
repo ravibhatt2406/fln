@@ -313,11 +313,12 @@ function cellOrNull(cell: string): string | null {
 }
 
 const CSV_COLUMNS = [
-  'conceptId', 'skills', 'subskills', 'generationIntent', 'questionFamily', 'svgThemeIds',
+  'conceptId', 'skills', 'subskills', 'generationIntent', 'questionFamily',
+  'assessmentMode', 'svgThemeIds',
   'numeralRange', 'digitCount', 'operations', 'maxOperandCount',
   'carryBehavior', 'borrowBehavior', 'maxSumOrDifference',
   'answerType', 'blankCount', 'questionCount', 'subjectCategory',
-  'name', 'tags',
+  'answerSpec', 'name', 'tags',
 ] as const;
 
 export function registerQuestionTemplateRoutes(app: express.Express) {
@@ -620,6 +621,18 @@ export function registerQuestionTemplateRoutes(app: express.Express) {
       const questionFamily = col(row, 'questionFamily') || 'operation';
       const svgThemeIds = splitList(col(row, 'svgThemeIds'));
       const answerSpec = col(row, 'answerSpec');
+      const rawMode = col(row, 'assessmentMode');
+      const assessmentMode = rawMode === '' ? 'written' : rawMode;
+
+      if (
+        !(ASSESSMENT_MODES as readonly string[]).includes(assessmentMode)
+      ) {
+        errors.push({
+          row: rowNumber,
+          error: 'assessmentMode must be written, observed or both.',
+        });
+        return;
+      }
       const tags = normalizeTags(splitList(col(row, 'tags')));
       const name = col(row, 'name');
 
@@ -644,7 +657,7 @@ export function registerQuestionTemplateRoutes(app: express.Express) {
       }
 
       prepared.push(buildTemplate(
-        { conceptId, skills, subskills, generationIntent, questionFamily: questionFamily as QuestionFamily, svgThemeIds, params, name, tags, source: 'csv' },
+        { conceptId, skills, subskills, generationIntent, questionFamily: questionFamily as QuestionFamily, assessmentMode: assessmentMode as 'written' | 'observed' | 'both', svgThemeIds, params, name, tags, source: 'csv' },
         user,
         now
       ));
